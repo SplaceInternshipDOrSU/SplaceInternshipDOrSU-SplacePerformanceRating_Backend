@@ -7,7 +7,7 @@ const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const port = process.env.PORT;
-// const { init: initSocket } = require("./socket"); // Import the socket initialization
+const { init: initSocket } = require("./socket"); // Import the socket initialization
 
 const server = http.createServer(app);
 // Set an extremely high header size (e.g., 1MB)
@@ -36,6 +36,21 @@ app.use(
 
 dbConnect();
 
+initSocket(server, {
+  cors: {
+    origin:
+      process.env.MODE === "proasd"
+        ? [
+            process.env.client_trader_production_url,
+            process.env.client_admin_production_url,
+            "http://localhost:3000",
+            "http://localhost:3003",
+            "http://localhost:5173",
+          ]
+        : ["http://localhost:3000", "http://localhost:3003", "http://localhost:5173"],
+    credentials: true,
+  },
+});
 
 
 app.use(bodyParser.json());
@@ -43,6 +58,7 @@ app.use(cookieParser());
 
 // Routes
 app.use("/api", require("./routes/authRoutes"));
+app.use("/api", require("./routes/dashboard/userRoutes"));
 // app.use("/api", require("./routes/chatRoutes"));
 
 

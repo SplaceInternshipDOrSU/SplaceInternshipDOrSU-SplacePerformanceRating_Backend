@@ -5,7 +5,7 @@ const formidable = require("formidable");
 
 const { response } = require("express");
 const adminModel = require("../models/adminModel");
-// const sellerModel = require("../models/sellerModel");
+const userModel = require("../models/userModel");
 const { responseReturn } = require("../utils/response");
 const { createToken } = require("../utils/tokenCreate");
 const bcrypt = require("bcrypt");
@@ -21,27 +21,30 @@ const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
 const { error } = require("console");
-// const traderModel = require("../models/traderModel");
+
 
 
 class authControllers {
   resizeImage = async (imagePath) => {
+    console.log("Resizing:", imagePath);
     const outputDir = path.join(__dirname, "../../uploads");
-    const outputFilePath = path.join(
-      outputDir,
-      "resized_" + path.basename(imagePath)
-    );
-
-    // Ensure the output directory exists
+    const outputFilePath = path.join(outputDir, "resized_" + path.basename(imagePath));
+  
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
-
+  
     await sharp(imagePath)
-      .resize(1000, 1000) // Adjust the width and height as needed
+      .resize({ width: 1000, height: 1000, fit: "inside" })
       .toFile(outputFilePath);
+  
     return outputFilePath;
   };
+  
+  getField(field) {
+    return Array.isArray(field) ? field[0] : field;
+  }
+  
 
 
   admin_login = async (req, res) => {
@@ -172,10 +175,10 @@ class authControllers {
         responseReturn(res, 200, { userInfo: user });
         console.log(user);
       } else {
-        const seller = await sellerModel.findById(id);
+        const user1 = await userModel.findById(id);
         // console.log("SELLER __________________________")
         // console.log(seller)
-        responseReturn(res, 200, { userInfo: seller });
+        responseReturn(res, 200, { userInfo: user1 });
         // console.log(seller);
       }
     } catch (error) {
@@ -214,10 +217,176 @@ class authControllers {
     }
   }
 
- 
+// USER CONTROLLERS
+
+  user_registration = async (req, res) => {
+    console.log("USER REGISTRATION");
+    try {
+      const form = new formidable.IncomingForm({ multiples: true });
+      form.parse(req, async (err, fields, files) => {
+        if (err) {
+          console.error("Form parsing error:", err);
+          return responseReturn(res, 400, { error: "Form parsing error", requestMessage: "Application Request has failed. Please try again." });
+        }
+  
+        let {
+          firstName,
+          middleName,
+          lastName,
+          birthDate,
+          sex,
+          email,
+          role,
+          phoneNumber,
+          password,
+        } = fields;
+
+        console.log("fields")
+        console.log(fields)
+
+        firstName = this.getField(firstName);
+        middleName = this.getField(middleName);
+        lastName = this.getField(lastName);
+        birthDate = this.getField(birthDate);
+        sex = this.getField(sex);
+        email = this.getField(email);
+        role = this.getField(role);
+        phoneNumber = this.getField(phoneNumber);
+        password = this.getField(password);
+
+  
+        const {
+          profileImage,
+          validId_img,
+          credential_img01,
+          credential_img02,
+        } = files;
+  
+        const getUser = await userModel.findOne({ email });
+        if (getUser) {
+          return responseReturn(res, 404, {
+            error: "Email is already used. Please login instead.",
+            requestMessage: "Email is already used. Please login instead.",
+          });
+        }
+  
+        cloudinary.config({
+          cloud_name: process.env.cloud_name,
+          api_key: process.env.api_key,
+          api_secret: process.env.api_secret,
+          secure: true,
+        });
+  
+        try {
+          // Updated helper function
+          const resizeAndUploadImage = async (imageFile, folder) => {
+            if (!imageFile) {
+              throw new Error("No image file provided.");
+            }
+  
+            // If it's an array (because of `multiples: true`), use the first one
+            const actualFile = Array.isArray(imageFile) ? imageFile[0] : imageFile;
+  
+            console.log("Actual file:", actualFile.filepath);
+  
+            const resizedImage = await this.resizeImage(actualFile.filepath);
+            const uploadResult = await cloudinary.uploader.upload(resizedImage, { folder });
+  
+            // Clean up local resized image
+            fs.unlinkSync(resizedImage);
+  
+            return uploadResult;
+          };
+  
+          const [
+            profileImageURL,
+            validIdURL,
+            credential1URL,
+            credential2URL,
+          ] = await Promise.all([
+            resizeAndUploadImage(profileImage, "usersCredentials"),
+            resizeAndUploadImage(validId_img, "usersCredentials"),
+            resizeAndUploadImage(credential_img01, "usersCredentials"),
+            resizeAndUploadImage(credential_img02, "usersCredentials"),
+          ]);
+  
+          const hashedPassword = await bcrypt.hash(password, 10);
+  
+          const user = await userModel.create({
+            name: firstName + " " + lastName,
+            firstName,
+            middleName,
+            lastName,
+            birthDate: new Date(birthDate),
+            sex,
+            phoneNumber,
+            email,
+            role,
+            password: hashedPassword,
+            profileImage: profileImageURL.url,
+            validId_img: validIdURL.url,
+            credential_img01: credential1URL.url,
+            credential_img02: credential2URL.url,
+          });
+  
+          const token = await createToken({ id: user.id, role: user.role });
+          res.cookie("accessToken", token, {
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          });
 
 
+          console.log("done")
+  
+          responseReturn(res, 201, {
+            message: "Request Recorded.",
+            requestMessage: "Account Application Request Recorded.",
+          });
+        } catch (error) {
+          console.error("Image upload or seller creation error:", error);
+          return responseReturn(res, 500, { error: "Internal server error.", requestMessage: "Account Application Request has failed please try again." });
+        }
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      return responseReturn(res, 500, { error: "Internal server error.", requestMessage: "Account Application Request has failed please try again." });
+    }
+  };
 
+
+  user_login = async (req, res) => {
+
+    console.log("login")
+    const { email, password } = req.body;
+    try {
+      const user = await userModel.findOne({ email }).select("+password");
+
+      if (user) {
+        const match = await bcrypt.compare(password, user.password);
+        if (match) {
+          const token = await createToken({
+            id: user._id,
+            role: user.role,
+          });
+
+          res.cookie("accessToken", token, {
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          });
+          responseReturn(res, 200, { token, message: "Login Success" });
+        } else {
+          responseReturn(res, 404, {
+            error: "Invalid Credentials, Please try Again",
+          });
+        }
+      } else {
+        responseReturn(res, 404, {
+          error: "Invalid Credentials, Please try Again",
+        });
+      }
+    } catch (error) {
+      console.log(error)
+      responseReturn(res, 500, { error: error.message });
+    }
+  };
 }
 
 
