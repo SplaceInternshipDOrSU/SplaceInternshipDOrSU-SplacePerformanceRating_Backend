@@ -26,19 +26,40 @@ const { error } = require("console");
 
 class authControllers {
   resizeImage = async (imagePath) => {
-    console.log("Resizing:", imagePath);
-    const outputDir = path.join(__dirname, "../../uploads");
-    const outputFilePath = path.join(outputDir, "resized_" + path.basename(imagePath));
+    try {
+      console.log("Resizing (without cropping):", imagePath);
   
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
+      const outputDir = path.join(__dirname, "../../uploads");
+      const outputFilePath = path.join(outputDir, "resized_" + path.basename(imagePath));
+  
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+  
+      const image = sharp(imagePath);
+  
+      const metadata = await image.metadata();
+      console.log("Original size:", metadata.width, "x", metadata.height);
+  
+      if (metadata.width > 1000 || metadata.height > 1000) {
+        await image
+          .resize({
+            width: 1000,
+            height: 1000,
+            fit: "inside", // This will resize without cropping
+            withoutEnlargement: true // Prevent upsizing small images
+          })
+          .toFile(outputFilePath);
+      } else {
+        // If image is already smaller than 1000x1000, just copy it
+        await image.toFile(outputFilePath);
+      }
+  
+      return outputFilePath;
+    } catch (error) {
+      console.error("Error resizing image:", error);
+      throw error;
     }
-  
-    await sharp(imagePath)
-      .resize({ width: 1000, height: 1000, fit: "inside" })
-      .toFile(outputFilePath);
-  
-    return outputFilePath;
   };
   
   getField(field) {
@@ -300,7 +321,7 @@ class authControllers {
   
           const [
             profileImageURL,
-            validIdURL,
+            validIdImgURL,
             credential1URL,
             credential2URL,
           ] = await Promise.all([
@@ -324,7 +345,7 @@ class authControllers {
             role,
             password: hashedPassword,
             profileImage: profileImageURL.url,
-            validId_img: validIdURL.url,
+            validId_img: validIdImgURL.url,
             credential_img01: credential1URL.url,
             credential_img02: credential2URL.url,
           });

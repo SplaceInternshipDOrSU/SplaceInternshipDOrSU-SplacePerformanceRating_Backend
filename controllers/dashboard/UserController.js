@@ -5,7 +5,7 @@ const userModel = require('../../models/userModel')
 // const traderModel = require("../../models/traderModel")
 
 class userController {  
-    get_user_request = async (req, res) => {
+    get_user_requests = async (req, res) => {
         const { page, searchValue, parPage } = req.query
         const skipPage = parseInt(parPage) * (parseInt(page) - 1)
         try {
@@ -22,8 +22,48 @@ class userController {
         }
     }
 
+    get_user = async (req, res) => {
+        const { userId } = req.params
 
+        try {
+            const user = await userModel.findById(userId)
+            responseReturn(res, 200, { user })
+        } catch (error) {
+            responseReturn(res, 500, { error: error.message })
+        }
+    }
+
+    user_status_update = async (req, res) => {
+        const { userId, status } = req.body;
     
+        try {
+            // Check if the seller exists
+            const seller = await userModel.findById(userId);
+            if (!seller) {
+                return responseReturn(res, 404, { message: "User not found" });
+            }
+    
+            // Update the seller's status
+            seller.status = status;
+            await seller.save();
+    
+            // // Update listings based on the seller's new status
+            // if (status !== "active") {
+            //     await Listing.updateMany({ userId }, { isAvailable: false });
+            // } else {
+            //     await Listing.updateMany({ userId }, { isAvailable: true });
+            // }
+    
+            // Return the updated seller
+            const updatedUser = await userModel.findById(userId);
+            responseReturn(res, 200, { user: updatedUser, message: "User status updated successfully" });
+        } catch (error) {
+            responseReturn(res, 500, { error: error.message });
+        }
+    };
+
+
+
     // get_trader_request = async (req, res) => {
     //     console.log("asdasdasd")
     //     const { page, searchValue, parPage } = req.query

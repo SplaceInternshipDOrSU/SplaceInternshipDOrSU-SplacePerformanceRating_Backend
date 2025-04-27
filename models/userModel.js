@@ -39,6 +39,10 @@ const userSchema = new Schema(
       type: String,
       // required: true,
     },
+    validId_img: {
+      type: String,
+      // required: true,
+    },
     credential_img01: {
       type: String,
       // required: true,
