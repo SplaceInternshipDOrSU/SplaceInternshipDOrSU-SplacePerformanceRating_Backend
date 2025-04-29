@@ -39,7 +39,7 @@ dbConnect();
 initSocket(server, {
   cors: {
     origin:
-      process.env.MODE === "proasd"
+      process.env.MODE === "pro"
         ? [
             process.env.client_trader_production_url,
             process.env.client_admin_production_url,
@@ -59,6 +59,7 @@ app.use(cookieParser());
 // Routes
 app.use("/api", require("./routes/authRoutes"));
 app.use("/api", require("./routes/dashboard/userRoutes"));
+app.use("/api", require("./routes/dashboard/adminActionRoutes"));
 // app.use("/api", require("./routes/chatRoutes"));
 
 

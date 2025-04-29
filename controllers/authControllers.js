@@ -258,6 +258,7 @@ class authControllers {
           sex,
           email,
           role,
+          category,
           phoneNumber,
           password,
         } = fields;
@@ -272,16 +273,18 @@ class authControllers {
         sex = this.getField(sex);
         email = this.getField(email);
         role = this.getField(role);
+        category = this.getField(category);
         phoneNumber = this.getField(phoneNumber);
         password = this.getField(password);
 
   
         const {
           profileImage,
-          validId_img,
-          credential_img01,
-          credential_img02,
         } = files;
+
+
+        console.log(files)
+        console.log("files")
   
         const getUser = await userModel.findOne({ email });
         if (getUser) {
@@ -321,14 +324,8 @@ class authControllers {
   
           const [
             profileImageURL,
-            validIdImgURL,
-            credential1URL,
-            credential2URL,
           ] = await Promise.all([
             resizeAndUploadImage(profileImage, "usersCredentials"),
-            resizeAndUploadImage(validId_img, "usersCredentials"),
-            resizeAndUploadImage(credential_img01, "usersCredentials"),
-            resizeAndUploadImage(credential_img02, "usersCredentials"),
           ]);
   
           const hashedPassword = await bcrypt.hash(password, 10);
@@ -343,11 +340,9 @@ class authControllers {
             phoneNumber,
             email,
             role,
+            category,
             password: hashedPassword,
             profileImage: profileImageURL.url,
-            validId_img: validIdImgURL.url,
-            credential_img01: credential1URL.url,
-            credential_img02: credential2URL.url,
           });
   
           const token = await createToken({ id: user.id, role: user.role });

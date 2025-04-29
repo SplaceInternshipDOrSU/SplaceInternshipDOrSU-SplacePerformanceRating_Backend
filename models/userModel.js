@@ -37,27 +37,17 @@ const userSchema = new Schema(
     },
     profileImage: {
       type: String,
-      // required: true,
-    },
-    validId_img: {
-      type: String,
-      // required: true,
-    },
-    credential_img01: {
-      type: String,
-      // required: true,
-    },
-    credential_img02: {
-      type: String,
-      // required: true,
     },
     role: {
       type: String,
-      enum: ['agent', 'manager', 'team-lead','coo','ceo'],
+      required: true,
+    },
+    category: {
+      type: String,
       required: true,
     },
     password: {
-      type: String,
+      type: String, 
       required: true,
       select: false,
     },
@@ -116,7 +106,7 @@ userSchema.index(
       lastName: 5,
       email: 4,
       middleName: 3,
-      associationName: 2,
+    
     },
   }
 );
