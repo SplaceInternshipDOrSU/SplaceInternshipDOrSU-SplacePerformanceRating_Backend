@@ -15,7 +15,8 @@ module.exports.authMiddleware = (req, res, next) => {
 
   try {
     const decodedToken = jwt.verify(token, process.env.SECRET); // No need for await
-    req.role = decodedToken.role;
+    // req.role = decodedToken.role;
+    req.category = decodedToken.category;
     req.id = decodedToken.id;
     next();
   } catch (error) {

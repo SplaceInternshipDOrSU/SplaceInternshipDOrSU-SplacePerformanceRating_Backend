@@ -19,6 +19,14 @@ const adminSchema = new Schema({
     type: String,
     default: "admin",
   },
+  category: {
+    type: String,
+    default: "admin",
+  },
+  status: {
+    type: String,
+    default: "pending", // Possible values: "active", "inactive", "pending"
+  },
 });
 
 module.exports = model("admins", adminSchema);

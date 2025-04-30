@@ -79,7 +79,7 @@ class authControllers {
         if (match) {
           const token = await createToken({
             id: admin._id,
-            role: admin.role,
+            category: admin.category,
           });
 
           res.cookie("accessToken", token, {
@@ -179,28 +179,22 @@ class authControllers {
     }
   };
   
-
- 
-
-
-
-
-  
-  
-
   getUser = async (req, res) => {
-    const { id, role } = req;
+    const { id, category } = req;
     try {
-      if (role === "admin") {
+      if (category === "admin") {
         const user = await adminModel.findById(id);
         responseReturn(res, 200, { userInfo: user });
         console.log(user);
       } else {
         const user1 = await userModel.findById(id);
-        // console.log("SELLER __________________________")
-        // console.log(seller)
+  
+        // Normalize category if it exists
+        if (user1 && user1.category) {
+          user1.category = user1.category.toLowerCase().replace(/\s+/g, "");
+        }
+  
         responseReturn(res, 200, { userInfo: user1 });
-        // console.log(seller);
       }
     } catch (error) {
       responseReturn(res, 500, {
@@ -208,6 +202,7 @@ class authControllers {
       });
     }
   };
+  
 
 
   
@@ -345,7 +340,7 @@ class authControllers {
             profileImage: profileImageURL.url,
           });
   
-          const token = await createToken({ id: user.id, role: user.role });
+          const token = await createToken({ id: user.id, role: user.role ,category: user.category });
           res.cookie("accessToken", token, {
             expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           });
@@ -370,8 +365,6 @@ class authControllers {
 
 
   user_login = async (req, res) => {
-
-    console.log("login")
     const { email, password } = req.body;
     try {
       const user = await userModel.findOne({ email }).select("+password");
@@ -382,6 +375,7 @@ class authControllers {
           const token = await createToken({
             id: user._id,
             role: user.role,
+            category: user.category,
           });
 
           res.cookie("accessToken", token, {
