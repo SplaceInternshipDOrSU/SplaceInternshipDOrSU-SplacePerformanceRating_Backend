@@ -78,9 +78,6 @@ class categoryController {
       return responseReturn(res, 500, { error: "Internal server error" });
     }
   };
-  
-
-
   role_add = async (req, res) => {
     const form = new formidable.IncomingForm({ multiples: true });
     form.parse(req, async (err, fields, files) => {
@@ -131,6 +128,116 @@ class categoryController {
       }
     });
   };
+  delete_role = async (req, res) => {
+    const { id } = req.params;
+  
+    if (!id) {
+      return responseReturn(res, 400, { error: "Role ID must be provided" });
+    }
+  
+    try {
+      // Find the role by ID
+      const role = await roleModel.findById(id);
+      if (!role) {
+        return responseReturn(res, 404, { error: "Role not found" });
+      }
+  
+      // Delete the role
+      await roleModel.deleteOne({ _id: id });
+  
+      // Fetch remaining roles
+      const remainingRoles = await roleModel.find();
+  
+      return responseReturn(res, 200, {
+        message: "Role deleted successfully",
+        roles: remainingRoles,
+      });
+    } catch (error) {
+      console.error("Error deleting role:", error);
+      return responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+
+  get_role_by_id = async (req, res) => {
+    console.log("ROLE GET BY ID")
+    const { id } = req.params;
+  
+    try {
+      const role = await roleModel.findById(id);
+      
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+  
+      console.log("role")
+      console.log(role)
+      responseReturn(res, 200, { role });
+    } catch (error) {
+      console.error(error.message);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
+
+  edit_role = async (req, res) => {
+    const form = new formidable.IncomingForm();
+
+    form.parse(req, async (err, fields) => {
+        if (err) {
+            return responseReturn(res, 400, { error: "Form parsing error" });
+        }
+
+        let id = fields.id?.[0];
+        let name = fields.name?.[0];
+        let description = fields.description?.[0];
+
+        console.log(fields);
+        console.log({ id, name, description });
+        console.log("fields ----------------");
+
+        if (!id) {
+            return responseReturn(res, 400, { error: "ID is required" });
+        }
+
+        try {
+            const role = await roleModel.findById(id);
+            if (!role) {
+                return responseReturn(res, 404, { error: "Role not found" });
+            }
+
+            // Check for duplicate name if name is provided
+            if (name) {
+                name = name.trim();
+
+                // Check if another role with the same name exists (excluding the current role)
+                const existingRole = await roleModel.findOne({
+                    name: name,
+                    _id: { $ne: id } // Exclude current role by ID
+                });
+
+                if (existingRole) {
+                    return responseReturn(res, 400, { error: "Role name already exists" });
+                }
+
+                role.name = name;
+                role.slug = name.split(" ").join("-").toLowerCase();
+            }
+
+            if (description) {
+                role.description = description.trim();
+            }
+
+            await role.save();
+
+            return responseReturn(res, 200, { role, message: "Role updated successfully" });
+        } catch (error) {
+            console.error(error.message);
+            return responseReturn(res, 500, { error: "Internal server error" });
+        }
+    });
+};
+
+
+  
 
 // CATEGORIES CONTROLLERS
 categories_get = async (req, res) => {

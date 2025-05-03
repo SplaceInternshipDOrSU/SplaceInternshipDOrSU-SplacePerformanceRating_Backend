@@ -6,6 +6,7 @@ const userController = require("../../controllers/dashboard/UserController");
 router.get('/request-users-get',authMiddleware,userController.get_user_requests)
 router.get('/get-user/:userId',authMiddleware,userController.get_user)
 router.post('/user-status-update',authMiddleware,userController.user_status_update)
+router.get('/get-users',authMiddleware,userController.get_active_users)
 
 
 

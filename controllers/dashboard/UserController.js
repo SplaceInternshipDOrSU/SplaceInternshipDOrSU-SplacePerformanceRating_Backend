@@ -62,6 +62,44 @@ class userController {
         }
     };
 
+     get_active_users = async (req, res) => {
+        let { page, searchValue, parPage } = req.query;
+    
+        // Validate query params
+        page = parseInt(page) || 1;
+        parPage = parseInt(parPage) || 10;
+    
+        const skipPage = parPage * (page - 1);
+    
+        try {
+            // Build dynamic query
+            const query = { status: 'active' };
+    
+            if (searchValue) {
+                query.$or = [
+                    { firstName: { $regex: searchValue, $options: "i" } },
+                    { middleName: { $regex: searchValue, $options: "i" } },
+                    { lastName: { $regex: searchValue, $options: "i" } },
+                ];
+            }
+    
+            // Fetch data with pagination and sorting
+            const users = await userModel.find(query)
+                .skip(skipPage)
+                .limit(parPage)
+                .sort({ createdAt: -1 });
+    
+            // Count total sellers matching the query
+            const totalUsers = await userModel.countDocuments(query);
+    
+            // Return response
+            responseReturn(res, 200, { totalUsers, users });
+        } catch (error) {
+            console.error("Error fetching active Users:", error.message);
+            responseReturn(res, 500, { message: "Server Error" });
+        }
+    };
+
 
 
     // get_trader_request = async (req, res) => {
