@@ -32,52 +32,59 @@ class categoryController {
 
 // ROLES CONTROLLERS
    
-  roles_get = async (req, res) => {
-    console.log("roles_get");
-    
-    const { page, searchValue, parPage } = req.query;
-    console.log("req.query", req.query);
-  
-    try {
-      // Parse and sanitize pagination parameters
-      const pageNum = Math.max(1, parseInt(page));     // Ensure page is at least 1
-      const perPage = parseInt(parPage);              // Default to 10 per page
-      const skip = perPage * (pageNum - 1);                 // Calculate skip for pagination
-  
-      // Build search query
-      let rolesQuery = {};
-      if (searchValue) {
-        rolesQuery = {
-          name: { $regex: searchValue, $options: "i" },      // Case-insensitive partial match
-        };
-      }
-  
-      // Fetch roles based on query, pagination, and sort by latest created
-      const roles = await roleModel
-        .find(rolesQuery)
-        .skip(skip)
-        .limit(perPage)
-        .sort({ createdAt: 1 });
-  
-      // Count total number of matching roles
-      const totalRoles = await roleModel.countDocuments(rolesQuery);
-      const totalPages = Math.ceil(totalRoles / perPage);   // Calculate total pages
-  
-      console.log("Roles fetched successfully");
-  
-      // Send back the roles and pagination info
-      return responseReturn(res, 200, {
-        totalRoles,
-        totalPages,
-        currentPage: pageNum,
-        perPage,
-        roles,
-      });
-    } catch (error) {
-      console.log(error.message);
-      return responseReturn(res, 500, { error: "Internal server error" });
+roles_get = async (req, res) => {
+  console.log("roles_get");
+
+  const { page, searchValue, parPage } = req.query;
+  console.log("req.query", req.query);
+
+  try {
+    // Parse and sanitize pagination parameters
+    const pageNum = Math.max(1, parseInt(page));     // Ensure page is at least 1
+    const perPage = parseInt(parPage);              // Per page items
+    const skip = perPage * (pageNum - 1);           // Calculate skip for pagination
+
+    // Build search query
+    let rolesQuery = {};
+    if (searchValue) {
+      rolesQuery = {
+        name: { $regex: searchValue, $options: "i" }, // Case-insensitive partial match
+      };
     }
-  };
+
+    // Fetch roles based on query, pagination, and sort by latest created
+    const roles = await roleModel
+      .find(rolesQuery)
+      .skip(skip)
+      .limit(perPage)
+      .sort({ createdAt: 1 });
+
+    // Add numbering to each role
+    const numberedRoles = roles.map((role, index) => ({
+      ...role._doc,  // Spread the original document fields
+      no: skip + index + 1  // Calculate number (e.g., 1, 2, 3, ...)
+    }));
+
+    // Count total number of matching roles
+    const totalRoles = await roleModel.countDocuments(rolesQuery);
+    const totalPages = Math.ceil(totalRoles / perPage);   // Calculate total pages
+
+    console.log("Roles fetched successfully");
+
+    // Send back the roles and pagination info
+    return responseReturn(res, 200, {
+      totalRoles,
+      totalPages,
+      currentPage: pageNum,
+      perPage,
+      roles: numberedRoles,
+    });
+  } catch (error) {
+    console.log(error.message);
+    return responseReturn(res, 500, { error: "Internal server error" });
+  }
+};
+
   role_add = async (req, res) => {
     const form = new formidable.IncomingForm({ multiples: true });
     form.parse(req, async (err, fields, files) => {
