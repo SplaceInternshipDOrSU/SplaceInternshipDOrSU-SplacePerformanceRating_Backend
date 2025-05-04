@@ -62,43 +62,64 @@ class userController {
         }
     };
 
-     get_active_users = async (req, res) => {
-        let { page, searchValue, parPage } = req.query;
+
+
+
+    get_active_users = async (req, res) => {
+        let { page, searchValue, perPage, role, category } = req.query;
     
         // Validate query params
         page = parseInt(page) || 1;
-        parPage = parseInt(parPage) || 10;
+        perPage = parseInt(perPage) || 10;
     
-        const skipPage = parPage * (page - 1);
+        const skipPage = perPage * (page - 1);
     
         try {
             // Build dynamic query
             const query = { status: 'active' };
     
-            if (searchValue) {
+            // Search filter (per letter matching using regex)
+            if (searchValue && searchValue.trim() !== '') {
+                const searchRegex = new RegExp(searchValue, 'i');
                 query.$or = [
-                    { firstName: { $regex: searchValue, $options: "i" } },
-                    { middleName: { $regex: searchValue, $options: "i" } },
-                    { lastName: { $regex: searchValue, $options: "i" } },
+                    { firstName: searchRegex },
+                    { middleName: searchRegex },
+                    { lastName: searchRegex },
                 ];
+            }
+    
+            // Role filter (case-insensitive exact match)
+            if (role && role.trim() !== '') {
+                query.role = { $regex: new RegExp(`^${role}$`, 'i') };
+            }
+    
+            // Category filter (case-insensitive exact match)
+            if (category && category.trim() !== '') {
+                query.category = { $regex: new RegExp(`^${category}$`, 'i') };
             }
     
             // Fetch data with pagination and sorting
             const users = await userModel.find(query)
                 .skip(skipPage)
-                .limit(parPage)
+                .limit(perPage)
                 .sort({ createdAt: -1 });
     
-            // Count total sellers matching the query
+            // Count total users matching the query
             const totalUsers = await userModel.countDocuments(query);
     
             // Return response
             responseReturn(res, 200, { totalUsers, users });
         } catch (error) {
-            console.error("Error fetching active Users:", error.message);
+            console.error("Error fetching active Users:", error.stack);
             responseReturn(res, 500, { message: "Server Error" });
         }
     };
+    
+    
+    ;
+
+
+
 
 
 

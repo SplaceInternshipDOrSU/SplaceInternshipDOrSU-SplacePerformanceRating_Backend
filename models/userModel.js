@@ -66,29 +66,6 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-// Middleware to handle listings availability when seller status changes
-// sellerSchema.pre("save", async function (next) {
-//   // Check if the status has been modified
-//   if (this.isModified("status")) {
-//     const newStatus = this.status;
-
-//     // If the seller's status is not active, update their listings
-//     if (newStatus !== "active") {
-//       await Listing.updateMany(
-//         { sellerId: this._id }, // Find listings by this seller
-//         { isAvailable: false }  // Set isAvailable to false
-//       );
-//     } else {
-//       // Optionally, re-activate listings if the seller is re-activated
-//       await Listing.updateMany(
-//         { sellerId: this._id },
-//         { isAvailable: true }
-//       );
-//     }
-//   }
-
-//   next();
-// });
 
 userSchema.index(
   {
@@ -96,7 +73,6 @@ userSchema.index(
     middleName: "text",
     lastName: "text",
     email: "text",
-    associationName: "text",
     name: "text",
   },
   {
@@ -113,6 +89,6 @@ userSchema.index(
 
 
 // module.exports = model("sellers", sellerSchema);
-const Seller = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
 
-module.exports = Seller;
+module.exports = User;
