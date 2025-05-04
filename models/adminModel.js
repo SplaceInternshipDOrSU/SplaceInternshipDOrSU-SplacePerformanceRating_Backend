@@ -5,27 +5,45 @@ const adminSchema = new Schema({
     type: String,
     required: true,
   },
+
   email: {
     type: String,
     required: true,
+    unique: true, // Ensure email uniqueness
   },
+
   password: {
     type: String,
     required: true,
-    select: false,
+    select: false, // Do not return password by default
   },
 
   role: {
-    type: String,
-    default: "admin",
+    name: {
+      type: String,
+      default: "admin",
+    },
+    description: {
+      type: String,
+      default: "Administrator with full access",
+    },
   },
+
   category: {
-    type: String,
-    default: "admin",
+    name: {
+      type: String,
+      default: "admin",
+    },
+    description: {
+      type: String,
+      default: "Admin category",
+    },
   },
+
   status: {
     type: String,
-    default: "pending", // Possible values: "active", "inactive", "pending"
+    enum: ["active", "inactive", "pending"],
+    default: "pending",
   },
 });
 

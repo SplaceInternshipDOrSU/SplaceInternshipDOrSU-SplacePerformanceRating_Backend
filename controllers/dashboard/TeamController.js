@@ -5,121 +5,14 @@ const mongoose = require('mongoose');
 // const sellerModel = require('../../models/sellerModel') 
 // const traderModel = require("../../models/traderModel")
 
-class userController {  
-    escapeRegex = (string) => {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    };
+class TeamController { 
     
-    get_user_requests = async (req, res) => {
-        let { page, parPage, searchValue, role, category } = req.query;
-
-        console.log(req.query)
-        console.log("req.query")
-    
-        // Safe casting and limits
-        const MAX_PER_PAGE = 100;
-        page = Math.max(parseInt(page) || 1, 1);
-        parPage = Math.min(Math.max(parseInt(parPage) || 10, 1), MAX_PER_PAGE);
-        const skipPage = parPage * (page - 1);
-    
-        try {
-            const query = { status: 'pending' };
-    
-            // Search filter
-            if (searchValue && searchValue.trim() !== '') {
-                const safeRegex = new RegExp(this.escapeRegex(searchValue), 'i');
-                query.$or = [
-                    { firstName: safeRegex },
-                    { middleName: safeRegex },
-                    { lastName: safeRegex },
-                ];
-            }
-    
-            // Role filter (must be valid ObjectId)
-            if (role && mongoose.Types.ObjectId.isValid(role)) {
-                query.role = new mongoose.Types.ObjectId(role);
-            }
-    
-            // Category filter (must be valid ObjectId)
-            if (category && mongoose.Types.ObjectId.isValid(category)) {
-                query.category = new mongoose.Types.ObjectId(category);
-            }
-    
-            let users = await userModel.find(query)
-                .skip(skipPage)
-                .limit(parPage)
-                .sort({ createdAt: -1 })
-                .populate('role', 'name')
-                .populate('category', 'name');
-    
-            users = users.map((user, index) => ({
-                ...user.toObject(),
-                role: user.role ? user.role.name : "Deleted Role",
-                category: user.category ? user.category.name : "Deleted Category",
-                number: skipPage + index + 1  // Add numbering here (starts at 1 across pages)
-            }));
-    
-            const totalUsers = await userModel.countDocuments(query);
-            const totalPages = Math.ceil(totalUsers / parPage);
-    
-            responseReturn(res, 200, {
-                totalUsers,
-                totalPages,
-                currentPage: page,
-                perPage: parPage,
-                users
-            });
-        } catch (error) {
-            console.error("Error fetching user requests:", error.stack);
-            responseReturn(res, 500, { message: "Server Error" });
-        }
-    };
-    
-    get_user = async (req, res) => {
-        const { userId } = req.params
-
-        try {
-            const user = await userModel.findById(userId)
-            responseReturn(res, 200, { user })
-        } catch (error) {
-            responseReturn(res, 500, { error: error.message })
-        }
-    }
-
-    user_status_update = async (req, res) => {
-        const { userId, status } = req.body;
-    
-        try {
-            // Check if the seller exists
-            const seller = await userModel.findById(userId);
-            if (!seller) {
-                return responseReturn(res, 404, { message: "User not found" });
-            }
-    
-            // Update the seller's status
-            seller.status = status;
-            await seller.save();
-    
-            // // Update listings based on the seller's new status
-            // if (status !== "active") {
-            //     await Listing.updateMany({ userId }, { isAvailable: false });
-            // } else {
-            //     await Listing.updateMany({ userId }, { isAvailable: true });
-            // }
-    
-            // Return the updated seller
-            const updatedUser = await userModel.findById(userId);
-            responseReturn(res, 200, { user: updatedUser, message: "User status updated successfully" });
-        } catch (error) {
-            responseReturn(res, 500, { error: error.message });
-        }
-    };
-
-    get_active_users = async (req, res) => {
-        console.log("get_active_users");
+    // SPLACE BS
+    get_active_supervisor = async (req, res) => {
+        console.log("get_active_supervisor");
     
         const { page, searchValue, parPage, role, category } = req.query;
-        console.log("req.query", req.query);
+        console.log("req.query supervisor", req.query);
     
         try {
             // Parse and sanitize pagination parameters
@@ -187,7 +80,286 @@ class userController {
             return responseReturn(res, 500, { error: "Internal server error" });
         }
     };
+    get_active_managers = async (req, res) => {
+        console.log("get_active_supervisor");
     
+        const { page, searchValue, parPage, role, category } = req.query;
+        console.log("req.query supervisor", req.query);
+    
+        try {
+            // Parse and sanitize pagination parameters
+            const pageNum = Math.max(1, parseInt(page) || 1); // Ensure page is at least 1
+            const perPage = parseInt(parPage) || 10;          // Default to 10 per page
+            const skip = perPage * (pageNum - 1);             // Calculate skip for pagination
+    
+            // Build query
+            const query = { status: 'active' };
+    
+            // Search filter
+            if (searchValue && searchValue.trim() !== '') {
+                const searchRegex = new RegExp(searchValue, 'i');
+                query.$or = [
+                    { firstName: searchRegex },
+                    { middleName: searchRegex },
+                    { lastName: searchRegex },
+                ];
+            }
+    
+            // Role filter (must be valid ObjectId)
+            if (role && mongoose.Types.ObjectId.isValid(role)) {
+                query.role = new mongoose.Types.ObjectId(role);
+            }
+    
+            // Category filter (must be valid ObjectId)
+            if (category && mongoose.Types.ObjectId.isValid(category)) {
+                query.category = new mongoose.Types.ObjectId(category);
+            }
+    
+            // Fetch users with populated role and category
+            let users = await userModel.find(query)
+                .skip(skip)
+                .limit(perPage)
+                .sort({ createdAt: -1 })
+                .populate('role', 'name')
+                .populate('category', 'name');
+    
+            // Count total number of matching users
+            const totalUsers = await userModel.countDocuments(query);
+            const totalPages = Math.ceil(totalUsers / perPage);  // Calculate total pages
+    
+            // Map users and add numbering
+            users = users.map((user, index) => {
+                return {
+                    no: skip + index + 1, // numbering starts at 1 across pages
+                    ...user.toObject(),
+                    role: user.role ? user.role.name : "Deleted Role",
+                    category: user.category ? user.category.name : "Deleted Category"
+                };
+            });
+    
+            console.log("Users fetched successfully");
+    
+            // Send back users and pagination info
+            return responseReturn(res, 200, {
+                totalUsers,
+                totalPages,
+                currentPage: pageNum,
+                perPage,  // still returning as perPage for frontend to handle
+                users,
+            });
+        } catch (error) {
+            console.error("Error fetching active Users:", error.stack);
+            return responseReturn(res, 500, { error: "Internal server error" });
+        }
+    };
+    get_active_rf_emp = async (req, res) => {
+        console.log("get_active_supervisor");
+    
+        const { page, searchValue, parPage, role, category } = req.query;
+        console.log("req.query supervisor", req.query);
+    
+        try {
+            // Parse and sanitize pagination parameters
+            const pageNum = Math.max(1, parseInt(page) || 1); // Ensure page is at least 1
+            const perPage = parseInt(parPage) || 10;          // Default to 10 per page
+            const skip = perPage * (pageNum - 1);             // Calculate skip for pagination
+    
+            // Build query
+            const query = { status: 'active' };
+    
+            // Search filter
+            if (searchValue && searchValue.trim() !== '') {
+                const searchRegex = new RegExp(searchValue, 'i');
+                query.$or = [
+                    { firstName: searchRegex },
+                    { middleName: searchRegex },
+                    { lastName: searchRegex },
+                ];
+            }
+    
+            // Role filter (must be valid ObjectId)
+            if (role && mongoose.Types.ObjectId.isValid(role)) {
+                query.role = new mongoose.Types.ObjectId(role);
+            }
+    
+            // Category filter (must be valid ObjectId)
+            if (category && mongoose.Types.ObjectId.isValid(category)) {
+                query.category = new mongoose.Types.ObjectId(category);
+            }
+    
+            // Fetch users with populated role and category
+            let users = await userModel.find(query)
+                .skip(skip)
+                .limit(perPage)
+                .sort({ createdAt: -1 })
+                .populate('role', 'name')
+                .populate('category', 'name');
+    
+            // Count total number of matching users
+            const totalUsers = await userModel.countDocuments(query);
+            const totalPages = Math.ceil(totalUsers / perPage);  // Calculate total pages
+    
+            // Map users and add numbering
+            users = users.map((user, index) => {
+                return {
+                    no: skip + index + 1, // numbering starts at 1 across pages
+                    ...user.toObject(),
+                    role: user.role ? user.role.name : "Deleted Role",
+                    category: user.category ? user.category.name : "Deleted Category"
+                };
+            });
+    
+            console.log("Users fetched successfully");
+    
+            // Send back users and pagination info
+            return responseReturn(res, 200, {
+                totalUsers,
+                totalPages,
+                currentPage: pageNum,
+                perPage,  // still returning as perPage for frontend to handle
+                users,
+            });
+        } catch (error) {
+            console.error("Error fetching active Users:", error.stack);
+            return responseReturn(res, 500, { error: "Internal server error" });
+        }
+    };
+    // SPLACE BS
+
+
+
+
+    get_user_requests = async (req, res) => {
+        const page = parseInt(req.query.page) || 1;
+        const parPage = parseInt(req.query.parPage) || 10;
+        const searchValue = req.query.searchValue || '';
+        const skipPage = parPage * (page - 1);
+    
+        try {
+            if (searchValue) {
+                // Implement search logic here if needed
+                // Example:
+                // const users = await userModel.find({ name: { $regex: searchValue, $options: 'i' }, status: 'pending' })
+            } else {
+                let users = await userModel.find({ status: 'pending' })
+                    .skip(skipPage)
+                    .limit(parPage)
+                    .sort({ createdAt: -1 })
+                    .populate('role', 'name')
+                    .populate('category', 'name');
+    
+                users = users.map(user => ({
+                    ...user.toObject(),
+                    role: user.role ? user.role.name : "Deleted Role",
+                    category: user.category ? user.category.name : "Deleted Category"
+                }));
+    
+                const totalUsers = await userModel.countDocuments({ status: 'pending' });
+    
+                responseReturn(res, 200, { totalUsers, users });
+            }
+        } catch (error) {
+            console.log(error);
+            responseReturn(res, 500, { error: error.message });
+        }
+    };
+    
+
+    get_user = async (req, res) => {
+        const { userId } = req.params
+
+        try {
+            const user = await userModel.findById(userId)
+            responseReturn(res, 200, { user })
+        } catch (error) {
+            responseReturn(res, 500, { error: error.message })
+        }
+    }
+
+    user_status_update = async (req, res) => {
+        const { userId, status } = req.body;
+    
+        try {
+            // Check if the seller exists
+            const seller = await userModel.findById(userId);
+            if (!seller) {
+                return responseReturn(res, 404, { message: "User not found" });
+            }
+    
+            // Update the seller's status
+            seller.status = status;
+            await seller.save();
+    
+            // // Update listings based on the seller's new status
+            // if (status !== "active") {
+            //     await Listing.updateMany({ userId }, { isAvailable: false });
+            // } else {
+            //     await Listing.updateMany({ userId }, { isAvailable: true });
+            // }
+    
+            // Return the updated seller
+            const updatedUser = await userModel.findById(userId);
+            responseReturn(res, 200, { user: updatedUser, message: "User status updated successfully" });
+        } catch (error) {
+            responseReturn(res, 500, { error: error.message });
+        }
+    };
+
+
+
+
+            get_active_users = async (req, res) => {
+            let { page, searchValue, perPage, role, category } = req.query;
+
+            page = parseInt(page) || 1;
+            perPage = parseInt(perPage) || 10;
+            const skipPage = perPage * (page - 1);
+
+            try {
+                const query = { status: 'active' };
+
+                if (searchValue && searchValue.trim() !== '') {
+                const searchRegex = new RegExp(searchValue, 'i');
+                query.$or = [
+                    { firstName: searchRegex },
+                    { middleName: searchRegex },
+                    { lastName: searchRegex },
+                ];
+                }
+
+                if (role && role.trim() !== '') {
+                query.role = role;
+                }
+
+                if (category && category.trim() !== '') {
+                query.category = category;
+                }
+
+                // Fetch users with populated role and category
+                let users = await userModel.find(query)
+                .skip(skipPage)
+                .limit(perPage)
+                .sort({ createdAt: -1 })
+                .populate('role', 'name')
+                .populate('category', 'name');
+
+                // Safely map users and handle deleted role/category
+                users = users.map(user => {
+                return {
+                    ...user.toObject(),
+                    role: user.role ? user.role.name : "Deleted Role",
+                    category: user.category ? user.category.name  : "Deleted Category"
+                };
+                });
+
+                const totalUsers = await userModel.countDocuments(query);
+
+                responseReturn(res, 200, { totalUsers, users });
+            } catch (error) {
+                console.error("Error fetching active Users:", error.stack);
+                responseReturn(res, 500, { message: "Server Error" });
+            }
+            };
 
       
 
@@ -359,4 +531,4 @@ class userController {
     // }
 }
 
-module.exports = new userController()
+module.exports = new TeamController()

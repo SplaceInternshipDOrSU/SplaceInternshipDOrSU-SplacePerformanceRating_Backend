@@ -74,12 +74,14 @@ class authControllers {
     console.log(req.body)
     try {
       const admin = await adminModel.findOne({ email }).select("+password");
+      console.log(admin)
+      console.log("admin")
       if (admin) {
         const match = await bcrypt.compare(password, admin.password);
         if (match) {
           const token = await createToken({
             id: admin._id,
-            category: admin.category,
+            category: admin.category.name,
           });
 
           res.cookie("accessToken", token, {
@@ -97,6 +99,7 @@ class authControllers {
         });
       }
     } catch (error) {
+      console.log(error)
       responseReturn(res, 500, { error: error.message });
     }
   };
@@ -123,7 +126,20 @@ class authControllers {
         name,
         email,
         password: hashedPassword,
-        role: "admin", // Default already set, but keeping it explicit is fine
+  
+        // Explicitly set role object
+        role: {
+          name: "admin",
+          description: "Administrator with full access",
+        },
+  
+        // Explicitly set category object
+        category: {
+          name: "admin",
+          description: "Admin category",
+        },
+  
+        // status will default to "pending"
       });
   
       await newAdmin.save();
@@ -135,6 +151,7 @@ class authControllers {
       responseReturn(res, 500, { error: error.message });
     }
   };
+  
 
 
   change_password = async (req, res) => {
@@ -187,16 +204,21 @@ class authControllers {
         responseReturn(res, 200, { userInfo: user });
         console.log(user);
       } else {
-        const user1 = await userModel.findById(id);
+        const user1 = await userModel.findById(id) .populate('role', 'name')
+        .populate('category', 'name');;
+        console.log(user1)
   
         // Normalize category if it exists
         if (user1 && user1.category) {
-          user1.category = user1.category.toLowerCase().replace(/\s+/g, "");
+          user1.category.name = user1.category.name.toLowerCase().replace(/\s+/g, "");
         }
+
+        console.log(user1)
   
         responseReturn(res, 200, { userInfo: user1 });
       }
     } catch (error) {
+      console.log(error)
       responseReturn(res, 500, {
         error: "Internal Server Error",
       });
@@ -372,39 +394,44 @@ user_registration = async (req, res) => {
 
 
 
-  user_login = async (req, res) => {
-    const { email, password } = req.body;
-    try {
-      const user = await userModel.findOne({ email }).select("+password");
+user_login = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    let user = await userModel.findOne({ email })
+      .select("+password")
+      .populate('role', 'name')
+      .populate('category', 'name');
 
-      if (user) {
-        const match = await bcrypt.compare(password, user.password);
-        if (match) {
-          const token = await createToken({
-            id: user._id,
-            role: user.role,
-            category: user.category,
-          });
+    if (user) {
+      const match = await bcrypt.compare(password, user.password);
 
-          res.cookie("accessToken", token, {
-            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          });
-          responseReturn(res, 200, { token, message: "Login Success" });
-        } else {
-          responseReturn(res, 404, {
-            error: "Invalid Credentials, Please try Again",
-          });
-        }
+      if (match) {
+        const token = await createToken({
+          id: user._id,
+          role: user.role.name,
+          category: user.category.name,
+        });
+
+        res.cookie("accessToken", token, {
+          expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        });
+        responseReturn(res, 200, { token, message: "Login Success" });
       } else {
         responseReturn(res, 404, {
           error: "Invalid Credentials, Please try Again",
         });
       }
-    } catch (error) {
-      console.log(error)
-      responseReturn(res, 500, { error: error.message });
+    } else {
+      responseReturn(res, 404, {
+        error: "Invalid Credentials, Please try Again",
+      });
     }
-  };
+  } catch (error) {
+    console.log(error);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 }
 
 
