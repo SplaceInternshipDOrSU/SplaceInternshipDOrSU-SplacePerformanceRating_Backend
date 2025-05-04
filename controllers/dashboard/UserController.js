@@ -6,21 +6,40 @@ const userModel = require('../../models/userModel')
 
 class userController {  
     get_user_requests = async (req, res) => {
-        const { page, searchValue, parPage } = req.query
-        const skipPage = parseInt(parPage) * (parseInt(page) - 1)
+        const page = parseInt(req.query.page) || 1;
+        const parPage = parseInt(req.query.parPage) || 10;
+        const searchValue = req.query.searchValue || '';
+        const skipPage = parPage * (page - 1);
+    
         try {
             if (searchValue) {
-                //const seller
+                // Implement search logic here if needed
+                // Example:
+                // const users = await userModel.find({ name: { $regex: searchValue, $options: 'i' }, status: 'pending' })
             } else {
-                const users = await userModel.find({ status: 'pending' }).skip(skipPage).limit(parPage).sort({ createdAt: -1 })
-                const totalUsers = await userModel.find({ status: 'pending' }).countDocuments()
-                responseReturn(res, 200, { totalUsers, users })
+                let users = await userModel.find({ status: 'pending' })
+                    .skip(skipPage)
+                    .limit(parPage)
+                    .sort({ createdAt: -1 })
+                    .populate('role', 'name')
+                    .populate('category', 'name');
+    
+                users = users.map(user => ({
+                    ...user.toObject(),
+                    role: user.role ? user.role.name : "Deleted Role",
+                    category: user.category ? user.category.name : "Deleted Category"
+                }));
+    
+                const totalUsers = await userModel.countDocuments({ status: 'pending' });
+    
+                responseReturn(res, 200, { totalUsers, users });
             }
         } catch (error) {
-            console.log()
-            responseReturn(res, 500, { error: error.message })
+            console.log(error);
+            responseReturn(res, 500, { error: error.message });
         }
-    }
+    };
+    
 
     get_user = async (req, res) => {
         const { userId } = req.params
@@ -65,58 +84,60 @@ class userController {
 
 
 
-    get_active_users = async (req, res) => {
-        let { page, searchValue, perPage, role, category } = req.query;
-    
-        // Validate query params
-        page = parseInt(page) || 1;
-        perPage = parseInt(perPage) || 10;
-    
-        const skipPage = perPage * (page - 1);
-    
-        try {
-            // Build dynamic query
-            const query = { status: 'active' };
-    
-            // Search filter (per letter matching using regex)
-            if (searchValue && searchValue.trim() !== '') {
+            get_active_users = async (req, res) => {
+            let { page, searchValue, perPage, role, category } = req.query;
+
+            page = parseInt(page) || 1;
+            perPage = parseInt(perPage) || 10;
+            const skipPage = perPage * (page - 1);
+
+            try {
+                const query = { status: 'active' };
+
+                if (searchValue && searchValue.trim() !== '') {
                 const searchRegex = new RegExp(searchValue, 'i');
                 query.$or = [
                     { firstName: searchRegex },
                     { middleName: searchRegex },
                     { lastName: searchRegex },
                 ];
-            }
-    
-            // Role filter (case-insensitive exact match)
-            if (role && role.trim() !== '') {
-                query.role = { $regex: new RegExp(`^${role}$`, 'i') };
-            }
-    
-            // Category filter (case-insensitive exact match)
-            if (category && category.trim() !== '') {
-                query.category = { $regex: new RegExp(`^${category}$`, 'i') };
-            }
-    
-            // Fetch data with pagination and sorting
-            const users = await userModel.find(query)
+                }
+
+                if (role && role.trim() !== '') {
+                query.role = role;
+                }
+
+                if (category && category.trim() !== '') {
+                query.category = category;
+                }
+
+                // Fetch users with populated role and category
+                let users = await userModel.find(query)
                 .skip(skipPage)
                 .limit(perPage)
-                .sort({ createdAt: -1 });
-    
-            // Count total users matching the query
-            const totalUsers = await userModel.countDocuments(query);
-    
-            // Return response
-            responseReturn(res, 200, { totalUsers, users });
-        } catch (error) {
-            console.error("Error fetching active Users:", error.stack);
-            responseReturn(res, 500, { message: "Server Error" });
-        }
-    };
-    
-    
-    ;
+                .sort({ createdAt: -1 })
+                .populate('role', 'name')
+                .populate('category', 'name');
+
+                // Safely map users and handle deleted role/category
+                users = users.map(user => {
+                return {
+                    ...user.toObject(),
+                    role: user.role ? user.role.name : "Deleted Role",
+                    category: user.category ? user.category.name  : "Deleted Category"
+                };
+                });
+
+                const totalUsers = await userModel.countDocuments(query);
+
+                responseReturn(res, 200, { totalUsers, users });
+            } catch (error) {
+                console.error("Error fetching active Users:", error.stack);
+                responseReturn(res, 500, { message: "Server Error" });
+            }
+            };
+
+      
 
 
 

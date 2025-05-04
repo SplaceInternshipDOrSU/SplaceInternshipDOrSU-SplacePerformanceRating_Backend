@@ -235,133 +235,141 @@ class authControllers {
 
 // USER CONTROLLERS
 
-  user_registration = async (req, res) => {
-    console.log("USER REGISTRATION");
-    try {
-      const form = new formidable.IncomingForm({ multiples: true });
-      form.parse(req, async (err, fields, files) => {
-        if (err) {
-          console.error("Form parsing error:", err);
-          return responseReturn(res, 400, { error: "Form parsing error", requestMessage: "Application Request has failed. Please try again." });
-        }
-  
-        let {
+user_registration = async (req, res) => {
+  console.log("USER REGISTRATION");
+  try {
+    const form = new formidable.IncomingForm({ multiples: true });
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        console.error("Form parsing error:", err);
+        return responseReturn(res, 400, {
+          error: "Form parsing error",
+          requestMessage: "Application Request has failed. Please try again.",
+        });
+      }
+
+      let {
+        firstName,
+        middleName,
+        lastName,
+        birthDate,
+        sex,
+        email,
+        role,       // This should be the role ObjectId string
+        category,   // This should be the category ObjectId string
+        roleName,
+        categoryName,
+        phoneNumber,
+        password,
+      } = fields;
+
+      console.log("fields", fields);
+
+      // Get fields safely
+      firstName = this.getField(firstName);
+      middleName = this.getField(middleName);
+      lastName = this.getField(lastName);
+      birthDate = this.getField(birthDate);
+      sex = this.getField(sex);
+      email = this.getField(email);
+      roleName = this.getField(roleName);
+      categoryName = this.getField(categoryName);
+      phoneNumber = this.getField(phoneNumber);
+      password = this.getField(password);
+
+      const { profileImage } = files;
+
+      console.log("files", files);
+
+      // Check if email already exists
+      const getUser = await userModel.findOne({ email });
+      if (getUser) {
+        return responseReturn(res, 404, {
+          error: "Email is already used. Please login instead.",
+          requestMessage: "Email is already used. Please login instead.",
+        });
+      }
+
+      // Cloudinary config
+      cloudinary.config({
+        cloud_name: process.env.cloud_name,
+        api_key: process.env.api_key,
+        api_secret: process.env.api_secret,
+        secure: true,
+      });
+
+      try {
+        // Upload profile image
+        const resizeAndUploadImage = async (imageFile, folder) => {
+          if (!imageFile) {
+            throw new Error("No image file provided.");
+          }
+          const actualFile = Array.isArray(imageFile) ? imageFile[0] : imageFile;
+          console.log("Actual file:", actualFile.filepath);
+
+          const resizedImage = await this.resizeImage(actualFile.filepath);
+          const uploadResult = await cloudinary.uploader.upload(resizedImage, { folder });
+
+          fs.unlinkSync(resizedImage); // Clean up
+          return uploadResult;
+        };
+
+        const profileImageResult = await resizeAndUploadImage(profileImage, "usersCredentials");
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create user
+        const user = await userModel.create({
+          name: `${firstName} ${lastName}`,
           firstName,
           middleName,
           lastName,
-          birthDate,
+          birthDate: new Date(birthDate),
           sex,
-          email,
-          role,
-          category,
           phoneNumber,
-          password,
-        } = fields;
-
-        console.log("fields")
-        console.log(fields)
-
-        firstName = this.getField(firstName);
-        middleName = this.getField(middleName);
-        lastName = this.getField(lastName);
-        birthDate = this.getField(birthDate);
-        sex = this.getField(sex);
-        email = this.getField(email);
-        role = this.getField(role);
-        category = this.getField(category);
-        phoneNumber = this.getField(phoneNumber);
-        password = this.getField(password);
-
-  
-        const {
-          profileImage,
-        } = files;
-
-
-        console.log(files)
-        console.log("files")
-  
-        const getUser = await userModel.findOne({ email });
-        if (getUser) {
-          return responseReturn(res, 404, {
-            error: "Email is already used. Please login instead.",
-            requestMessage: "Email is already used. Please login instead.",
-          });
-        }
-  
-        cloudinary.config({
-          cloud_name: process.env.cloud_name,
-          api_key: process.env.api_key,
-          api_secret: process.env.api_secret,
-          secure: true,
+          email,
+          role,       // ObjectId ref to roles
+          category,   // ObjectId ref to categories
+          roleName,
+          categoryName,
+          password: hashedPassword,
+          profileImage: profileImageResult.url,
         });
-  
-        try {
-          // Updated helper function
-          const resizeAndUploadImage = async (imageFile, folder) => {
-            if (!imageFile) {
-              throw new Error("No image file provided.");
-            }
-  
-            // If it's an array (because of `multiples: true`), use the first one
-            const actualFile = Array.isArray(imageFile) ? imageFile[0] : imageFile;
-  
-            console.log("Actual file:", actualFile.filepath);
-  
-            const resizedImage = await this.resizeImage(actualFile.filepath);
-            const uploadResult = await cloudinary.uploader.upload(resizedImage, { folder });
-  
-            // Clean up local resized image
-            fs.unlinkSync(resizedImage);
-  
-            return uploadResult;
-          };
-  
-          const [
-            profileImageURL,
-          ] = await Promise.all([
-            resizeAndUploadImage(profileImage, "usersCredentials"),
-          ]);
-  
-          const hashedPassword = await bcrypt.hash(password, 10);
-  
-          const user = await userModel.create({
-            name: firstName + " " + lastName,
-            firstName,
-            middleName,
-            lastName,
-            birthDate: new Date(birthDate),
-            sex,
-            phoneNumber,
-            email,
-            role,
-            category,
-            password: hashedPassword,
-            profileImage: profileImageURL.url,
-          });
-  
-          const token = await createToken({ id: user.id, role: user.role ,category: user.category });
-          res.cookie("accessToken", token, {
-            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          });
 
+        // Generate JWT token
+        const token = await createToken({ id: user.id, role: user.role, category: user.category });
 
-          console.log("done")
-  
-          responseReturn(res, 201, {
-            message: "Request Recorded.",
-            requestMessage: "Account Application Request Recorded.",
-          });
-        } catch (error) {
-          console.error("Image upload or seller creation error:", error);
-          return responseReturn(res, 500, { error: "Internal server error.", requestMessage: "Account Application Request has failed please try again." });
-        }
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      return responseReturn(res, 500, { error: "Internal server error.", requestMessage: "Account Application Request has failed please try again." });
-    }
-  };
+        res.cookie("accessToken", token, {
+          expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production', // Only secure cookies in production
+        });
+
+        console.log("Registration done");
+
+        responseReturn(res, 201, {
+          message: "Request Recorded.",
+          requestMessage: "Account Application Request Recorded.",
+        });
+
+      } catch (error) {
+        console.error("Image upload or user creation error:", error);
+        return responseReturn(res, 500, {
+          error: "Internal server error.",
+          requestMessage: "Account Application Request has failed please try again.",
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    return responseReturn(res, 500, {
+      error: "Internal server error.",
+      requestMessage: "Account Application Request has failed please try again.",
+    });
+  }
+};
+
 
 
   user_login = async (req, res) => {

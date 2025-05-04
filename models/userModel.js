@@ -38,14 +38,16 @@ const userSchema = new Schema(
     profileImage: {
       type: String,
     },
-    role: {
+    roleName: {
       type: String,
       required: true,
     },
-    category: {
+    categoryName: {
       type: String,
       required: true,
     },
+    role: { type: Schema.Types.ObjectId, ref: 'roles', required: true },
+    category: { type: Schema.Types.ObjectId, ref: 'categories', required: true },
     password: {
       type: String, 
       required: true,

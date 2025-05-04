@@ -8,7 +8,8 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "start": "nodemon server.js",
+    "push": "git add --all && git commit -m \"changesMade(RUSH-NO-Description) -dev0\" && git push origin main"
   },
   "dependencies": {
     "axios": "^1.9.0",
