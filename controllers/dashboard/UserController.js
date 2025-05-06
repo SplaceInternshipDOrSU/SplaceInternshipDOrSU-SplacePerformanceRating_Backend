@@ -137,6 +137,8 @@ class userController {
                     { firstName: searchRegex },
                     { middleName: searchRegex },
                     { lastName: searchRegex },
+                    { email: searchRegex },
+                    {  status: searchRegex },
                 ];
             }
     
