@@ -84,11 +84,7 @@ roles_get = async (req, res) => {
     return responseReturn(res, 500, { error: "Internal server error" });
   }
 };
-
-
-
-
-  role_add = async (req, res) => {
+role_add = async (req, res) => {
     const form = new formidable.IncomingForm({ multiples: true });
     form.parse(req, async (err, fields, files) => {
       if (err) {
@@ -137,8 +133,8 @@ roles_get = async (req, res) => {
         }
       }
     });
-  };
-  delete_role = async (req, res) => {
+};
+delete_role = async (req, res) => {
     const { id } = req.params;
   
     if (!id) {
@@ -166,7 +162,7 @@ roles_get = async (req, res) => {
       console.error("Error deleting role:", error);
       return responseReturn(res, 500, { error: "Internal server error" });
     }
-  };
+};
 
   get_role_by_id = async (req, res) => {
     console.log("ROLE GET BY ID")

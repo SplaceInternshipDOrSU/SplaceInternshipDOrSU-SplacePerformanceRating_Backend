@@ -1,6 +1,8 @@
 const { responseReturn } = require("../../utils/response")
 const userModel = require('../../models/userModel') 
+const teamModel  = require('../../models/teamModel') 
 const mongoose = require('mongoose');
+const formidable = require("formidable");
 // const traderModel = require("../../models/traderModel")
 // const sellerModel = require('../../models/sellerModel') 
 // const traderModel = require("../../models/traderModel")
@@ -224,6 +226,235 @@ class TeamController {
             return responseReturn(res, 500, { error: "Internal server error" });
         }
     };
+
+    create_team = async (req, res) => {
+        console.log("TEAM CREATION INITIALIZED");
+        try {
+          const form = new formidable.IncomingForm({ multiples: true });
+      
+          // Promisify the formidable parse
+          const fields = await new Promise((resolve, reject) => {
+            form.parse(req, (err, fields, files) => {
+              if (err) reject(err);
+              else resolve(fields);
+            });
+          });
+      
+          console.log("Form parsed successfully");
+          console.log(fields);
+      
+          let { name, ceoId, cooId, supervisorId, managerId, rankandfileIds } = fields;
+      
+          // Convert single-value fields (formidable may send them as array)
+          name = Array.isArray(name) ? name[0] : name;
+          ceoId = Array.isArray(ceoId) ? ceoId[0] : ceoId;
+          cooId = Array.isArray(cooId) ? cooId[0] : cooId;
+          supervisorId = Array.isArray(supervisorId) ? supervisorId[0] : supervisorId;
+          managerId = Array.isArray(managerId) ? managerId[0] : managerId;
+      
+          // Ensure rankandfileIds is always array
+          if (rankandfileIds) {
+            rankandfileIds = Array.isArray(rankandfileIds) ? rankandfileIds : [rankandfileIds];
+          } else {
+            rankandfileIds = [];
+          }
+      
+          // Validate that name is provided (required) and unique
+          if (!name) {
+            return responseReturn(res, 400, { error: "Name is required" });
+          }
+      
+          // Ensure name is unique in the team collection
+          const existingTeam = await teamModel.findOne({ name });
+          if (existingTeam) {
+            return responseReturn(res, 400, { error: "A team with this name already exists" });
+          }
+      
+          // Helper function to validate user
+          const validateUser = async (id, role) => {
+            if (!id) return null;
+            const user = await userModel.findById(id);
+            if (!user || user.categoryName.toLowerCase() !== role) {
+              throw new Error(`Invalid ${role.charAt(0).toUpperCase() + role.slice(1)} user`);
+            }
+            return user;
+          };
+      
+          // Validate CEO and COO
+          const [ceoUser, cooUser] = await Promise.all([
+            validateUser(ceoId, 'ceo'),
+            validateUser(cooId, 'coo'),
+          ]);
+      
+          // Validate optional supervisor and manager
+          let supervisorUser = await validateUser(supervisorId, 'supervisor').catch(() => null);
+          let managerUser = await validateUser(managerId, 'manager').catch(() => null);
+      
+          // Validate rank-and-file users
+          let rankandfileUsers = [];
+          if (rankandfileIds && rankandfileIds.length > 0) {
+            rankandfileUsers = await userModel.find({
+              _id: { $in: rankandfileIds },
+              categoryName: { $regex: new RegExp('^rankandfile$', 'i') },
+            });
+      
+            if (rankandfileUsers.length !== rankandfileIds.length) {
+              return responseReturn(res, 400, { error: "Some Rank-and-File users are invalid" });
+            }
+          }
+      
+          // Create the team
+          const team = await teamModel.create({
+            name,
+            ceo: ceoUser._id,
+            coo: cooUser._id,
+            supervisor: supervisorUser ? supervisorUser._id : null,
+            manager: managerUser ? managerUser._id : null,
+            rankandfile: rankandfileUsers.map((user) => user._id),
+          });
+      
+          return responseReturn(res, 201, { message: "Team created successfully", team });
+      
+        } catch (error) {
+          console.error("Error creating team:", error);
+          return responseReturn(res, 500, { error: error.message || "Server error" });
+        }
+      };
+      
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // create_team = async (req, res) => {
+    // try {
+    //   const { name, ceoId, cooId, supervisorId, managerId, rankandfileIds } = req.body;
+
+    //   console.log(req.body)
+    //   console.log("CREATE TEAM INITIALIZED")
+  
+    //   // Validate required fields
+    //   if (!name || !ceoId || !cooId) {
+    //     return responseReturn(res, 400, { error: "Name, CEO, and COO are required" });
+    //   }
+  
+    //   // Find and validate CEO
+    //   const ceoUser = await userModel.findById(ceoId);
+    //   if (!ceoUser || ceoUser.categoryName.toLowerCase() !== 'ceo') {
+    //     return responseReturn(res, 400, { error: "Invalid CEO user" });
+    //   }
+  
+    //   // Find and validate COO
+    //   const cooUser = await userModel.findById(cooId);
+    //   if (!cooUser || cooUser.categoryName.toLowerCase() !== 'coo') {
+    //     return responseReturn(res, 400, { error: "Invalid COO user" });
+    //   }
+  
+    //   // Validate optional users
+    //   let supervisorUser = null;
+    //   if (supervisorId) {
+    //     supervisorUser = await userModel.findById(supervisorId);
+    //     if (!supervisorUser || supervisorUser.categoryName.toLowerCase() !== 'supervisor') {
+    //       return responseReturn(res, 400, { error: "Invalid Supervisor user" });
+    //     }
+    //   }
+  
+    //   let managerUser = null;
+    //   if (managerId) {
+    //     managerUser = await userModel.findById(managerId);
+    //     if (!managerUser || managerUser.categoryName.toLowerCase() !== 'manager') {
+    //       return responseReturn(res, 400, { error: "Invalid Manager user" });
+    //     }
+    //   }
+  
+    //   let rankandfileUsers = [];
+    //   if (rankandfileIds && Array.isArray(rankandfileIds)) {
+    //     rankandfileUsers = await userModel.find({ 
+    //       _id: { $in: rankandfileIds },
+    //       categoryName: { $regex: new RegExp('^rankandfile$', 'i') }
+    //     });
+  
+    //     if (rankandfileUsers.length !== rankandfileIds.length) {
+    //       return responseReturn(res, 400, { error: "Some Rank-and-File users are invalid" });
+    //     }
+    //   }
+  
+    //   // Create the team
+    //   const team = await teamModel.create({
+    //     name,
+    //     ceo: ceoUser._id,
+    //     coo: cooUser._id,
+    //     supervisor: supervisorUser ? supervisorUser._id : null,
+    //     manager: managerUser ? managerUser._id : null,
+    //     rankandfile: rankandfileUsers.map(user => user._id),
+    //   });
+  
+    //   return responseReturn(res, 201, { message: "Team created successfully", team });
+  
+    // } catch (error) {
+    //   console.error("Error creating team:", error);
+    //   return responseReturn(res, 500, { error: "Server error" });
+    // }
+    // };
+    get_active_ceo_coo = async (req, res) => {
+        console.log("get_active_ceo_coo");
+    
+        const { category } = req.query;
+        console.log("req.query ceo_coo", req.query);
+    
+        try {
+            // Validate category
+            if (!category || !mongoose.Types.ObjectId.isValid(category)) {
+                return responseReturn(res, 400, { error: "Invalid or missing category" });
+            }
+    
+            // Build query
+            const query = {
+                status: 'active',
+                category: new mongoose.Types.ObjectId(category)
+            };
+    
+            // Fetch the most recent user (if multiple, only get the latest one)
+            let user = await userModel.findOne(query)
+                .sort({ createdAt: -1 })
+                .populate('role', 'name')
+                .populate('category', 'name');
+    
+            if (!user) {
+                return responseReturn(res, 404, { error: "No active user found for this category" });
+            }
+    
+            // Map user with numbering and populated names
+            const mappedUser = {
+                no: 1,
+                ...user.toObject(),
+                role: user.role ? user.role.name : "Deleted Role",
+                category: user.category ? user.category.name : "Deleted Category"
+            };
+    
+            console.log("User fetched successfully");
+    
+            // Send back single user object (not array)
+            return responseReturn(res, 200, {
+                user: mappedUser,
+            });
+        } catch (error) {
+            console.error("Error fetching active User:", error.stack);
+            return responseReturn(res, 500, { error: "Internal server error" });
+        }
+    };
+    
+    
     // SPLACE BS
 
 
