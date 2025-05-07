@@ -232,7 +232,6 @@ class TeamController {
         try {
           const form = new formidable.IncomingForm({ multiples: true });
       
-          // Promisify the formidable parse
           const fields = await new Promise((resolve, reject) => {
             form.parse(req, (err, fields, files) => {
               if (err) reject(err);
@@ -243,59 +242,49 @@ class TeamController {
           console.log("Form parsed successfully");
           console.log(fields);
       
-          let { name, ceoId, cooId, supervisorId, managerId, rankandfileIds } = fields;
+          let { name, ceoId, cooId, supervisorId, managerId } = fields;
+          let rankandfileIds = fields['rankandfileIds[]'] || fields['rankandfileIds'] || [];
       
-          // Convert single-value fields (formidable may send them as array)
           name = Array.isArray(name) ? name[0] : name;
           ceoId = Array.isArray(ceoId) ? ceoId[0] : ceoId;
           cooId = Array.isArray(cooId) ? cooId[0] : cooId;
           supervisorId = Array.isArray(supervisorId) ? supervisorId[0] : supervisorId;
           managerId = Array.isArray(managerId) ? managerId[0] : managerId;
       
-          // Ensure rankandfileIds is always array
-          if (rankandfileIds) {
-            rankandfileIds = Array.isArray(rankandfileIds) ? rankandfileIds : [rankandfileIds];
-          } else {
-            rankandfileIds = [];
-          }
+          rankandfileIds = Array.isArray(rankandfileIds) ? rankandfileIds : [rankandfileIds];
       
-          // Validate that name is provided (required) and unique
           if (!name) {
             return responseReturn(res, 400, { error: "Name is required" });
           }
       
-          // Ensure name is unique in the team collection
           const existingTeam = await teamModel.findOne({ name });
           if (existingTeam) {
             return responseReturn(res, 400, { error: "A team with this name already exists" });
           }
       
-          // Helper function to validate user
-          const validateUser = async (id, role) => {
+          // Simple text check version
+          const validateUser = async (id, expectedCategoryName) => {
             if (!id) return null;
             const user = await userModel.findById(id);
-            if (!user || user.categoryName.toLowerCase() !== role) {
-              throw new Error(`Invalid ${role.charAt(0).toUpperCase() + role.slice(1)} user`);
+            if (!user || user.categoryName.toLowerCase() !== expectedCategoryName.toLowerCase()) {
+              throw new Error(`Invalid ${expectedCategoryName.toUpperCase()} user`);
             }
             return user;
           };
       
-          // Validate CEO and COO
           const [ceoUser, cooUser] = await Promise.all([
-            validateUser(ceoId, 'ceo'),
-            validateUser(cooId, 'coo'),
+            validateUser(ceoId, 'CEO'),
+            validateUser(cooId, 'COO'),
           ]);
       
-          // Validate optional supervisor and manager
-          let supervisorUser = await validateUser(supervisorId, 'supervisor').catch(() => null);
-          let managerUser = await validateUser(managerId, 'manager').catch(() => null);
+          let supervisorUser = await validateUser(supervisorId, 'Supervisor').catch(() => null);
+          let managerUser = await validateUser(managerId, 'Manager').catch(() => null);
       
-          // Validate rank-and-file users
           let rankandfileUsers = [];
-          if (rankandfileIds && rankandfileIds.length > 0) {
+          if (rankandfileIds.length > 0) {
             rankandfileUsers = await userModel.find({
               _id: { $in: rankandfileIds },
-              categoryName: { $regex: new RegExp('^rankandfile$', 'i') },
+              categoryName: { $regex: new RegExp('^Rank and File$', 'i') },
             });
       
             if (rankandfileUsers.length !== rankandfileIds.length) {
@@ -303,7 +292,6 @@ class TeamController {
             }
           }
       
-          // Create the team
           const team = await teamModel.create({
             name,
             ceo: ceoUser._id,
@@ -320,6 +308,180 @@ class TeamController {
           return responseReturn(res, 500, { error: error.message || "Server error" });
         }
       };
+      teams_get = async (req, res) => {
+        console.log("teams_get");
+      
+        const { page, searchValue, parPage } = req.query;
+        console.log("req.query", req.query);
+      
+        try {
+          const pageNum = Math.max(1, parseInt(page) || 1);
+          const parPageNum = Math.max(1, parseInt(parPage) || 10);
+          const skip = parPageNum * (pageNum - 1);
+      
+          // Build search match
+          let matchStage = {};
+          if (searchValue && searchValue.trim() !== '') {
+            const searchRegex = new RegExp(searchValue, 'i');
+            matchStage = {
+              $or: [
+                { name: searchRegex },
+                { 'ceoUser.name': searchRegex },
+                { 'ceoUser.email': searchRegex },
+                { 'cooUser.name': searchRegex },
+                { 'cooUser.email': searchRegex },
+                { 'supervisorUser.name': searchRegex },
+                { 'supervisorUser.email': searchRegex },
+                { 'managerUser.name': searchRegex },
+                { 'managerUser.email': searchRegex },
+                { 'rankandfileUsers.name': searchRegex },
+                { 'rankandfileUsers.email': searchRegex },
+              ]
+            };
+          }
+      
+          // Aggregate query
+          const teams = await teamModel.aggregate([
+            { $lookup: { from: 'users', localField: 'ceo', foreignField: '_id', as: 'ceoUser' } },
+            { $unwind: { path: '$ceoUser', preserveNullAndEmptyArrays: true } },
+            { $lookup: { from: 'users', localField: 'coo', foreignField: '_id', as: 'cooUser' } },
+            { $unwind: { path: '$cooUser', preserveNullAndEmptyArrays: true } },
+            { $lookup: { from: 'users', localField: 'supervisor', foreignField: '_id', as: 'supervisorUser' } },
+            { $unwind: { path: '$supervisorUser', preserveNullAndEmptyArrays: true } },
+            { $lookup: { from: 'users', localField: 'manager', foreignField: '_id', as: 'managerUser' } },
+            { $unwind: { path: '$managerUser', preserveNullAndEmptyArrays: true } },
+            { $lookup: { from: 'users', localField: 'rankandfile', foreignField: '_id', as: 'rankandfileUsers' } },
+            { $match: matchStage },
+            {
+              $project: {
+                name: 1,
+                createdAt: 1,
+                ceo: { _id: '$ceoUser._id', name: '$ceoUser.name', email: '$ceoUser.email' },
+                coo: { _id: '$cooUser._id', name: '$cooUser.name', email: '$cooUser.email' },
+                supervisor: { _id: '$supervisorUser._id', name: '$supervisorUser.name', email: '$supervisorUser.email' },
+                manager: { _id: '$managerUser._id', name: '$managerUser.name', email: '$managerUser.email' },
+                rankandfile: {
+                  $map: {
+                    input: '$rankandfileUsers',
+                    as: 'user',
+                    in: {
+                      _id: '$$user._id',
+                      name: '$$user.name',
+                      email: '$$user.email'
+                    }
+                  }
+                }
+              }
+            },
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: parPageNum },
+          ]);
+      
+          // Count total matching teams
+          const countResult = await teamModel.aggregate([
+            { $lookup: { from: 'users', localField: 'ceo', foreignField: '_id', as: 'ceoUser' } },
+            { $unwind: { path: '$ceoUser', preserveNullAndEmptyArrays: true } },
+            { $lookup: { from: 'users', localField: 'coo', foreignField: '_id', as: 'cooUser' } },
+            { $unwind: { path: '$cooUser', preserveNullAndEmptyArrays: true } },
+            { $lookup: { from: 'users', localField: 'supervisor', foreignField: '_id', as: 'supervisorUser' } },
+            { $unwind: { path: '$supervisorUser', preserveNullAndEmptyArrays: true } },
+            { $lookup: { from: 'users', localField: 'manager', foreignField: '_id', as: 'managerUser' } },
+            { $unwind: { path: '$managerUser', preserveNullAndEmptyArrays: true } },
+            { $lookup: { from: 'users', localField: 'rankandfile', foreignField: '_id', as: 'rankandfileUsers' } },
+            { $match: matchStage },
+            { $count: "total" }
+          ]);
+      
+          const totalTeams = countResult[0]?.total || 0;
+          const totalPages = Math.ceil(totalTeams / parPageNum);
+      
+          // Add numbering
+          const numberedTeams = teams.map((team, index) => ({
+            ...team,
+            no: skip + index + 1
+          }));
+      
+          console.log("Teams fetched successfully");
+      
+          return responseReturn(res, 200, {
+            totalTeams,
+            totalPages,
+            currentPage: pageNum,
+            perPage: parPageNum, // 👈 returns as perPage
+            teams: numberedTeams,
+          });
+      
+        } catch (error) {
+          console.log(error.stack || error.message);
+          return responseReturn(res, 500, { error: "Internal server error" });
+        }
+      };
+      
+      
+      
+      
+
+  
+
+// teams_get = async (req, res) => {
+//   console.log("teams_get");
+
+//   const { page, searchValue, perPage } = req.query;
+//   console.log("req.query", req.query);
+
+//   try {
+//     // Validate and default pagination params
+//     const pageNum = Math.max(1, parseInt(page) || 1);
+//     const perPageNum = Math.max(1, parseInt(perPage) || 10);
+//     const skip = perPageNum * (pageNum - 1);
+
+//     // Build search query
+//     let teamsQuery = {};
+//     if (searchValue) {
+//       teamsQuery = {
+//         name: { $regex: searchValue, $options: "i" }, // Case-insensitive name search
+//       };
+//     }
+
+//     // Fetch teams with populated user references
+//     const teams = await teamModel
+//       .find(teamsQuery)
+//       .skip(skip)
+//       .limit(perPageNum)
+//       .sort({ createdAt: -1 }) // latest first
+//       .populate('ceo', 'name email') // populate only name and email fields
+//       .populate('coo', 'name email')
+//       .populate('supervisor', 'name email')
+//       .populate('manager', 'name email')
+//       .populate('rankandfile', 'name email');
+
+//     // Add numbering
+//     const numberedTeams = teams.map((team, index) => ({
+//       ...team.toObject(),
+//       no: skip + index + 1
+//     }));
+
+//     // Count total matching teams
+//     const totalTeams = await teamModel.countDocuments(teamsQuery);
+//     const totalPages = Math.ceil(totalTeams / perPageNum);
+
+//     console.log("Teams fetched successfully");
+
+//     return responseReturn(res, 200, {
+//       totalTeams,
+//       totalPages,
+//       currentPage: pageNum,
+//       perPage: perPageNum,
+//       teams: numberedTeams,
+//     });
+
+//   } catch (error) {
+//     console.log(error.message);
+//     return responseReturn(res, 500, { error: "Internal server error" });
+//   }
+// };
+
       
     
 

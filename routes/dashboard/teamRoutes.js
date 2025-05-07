@@ -17,6 +17,7 @@ router.get('/get-rf-employee',authMiddleware,TeamController.get_active_rf_emp)
 
 
 router.post('/team-add',authMiddleware,TeamController.create_team)
+router.get("/teams-get", TeamController.teams_get);
 
 
 
