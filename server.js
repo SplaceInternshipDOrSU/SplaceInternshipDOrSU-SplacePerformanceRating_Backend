@@ -61,6 +61,7 @@ app.use("/api", require("./routes/authRoutes"));
 app.use("/api", require("./routes/dashboard/userRoutes"));
 app.use("/api", require("./routes/dashboard/adminActionRoutes"));
 app.use("/api", require("./routes/dashboard/teamRoutes"));
+app.use("/api", require("./routes/dashboard/ratingRoutes/ratingRoutes"));
 
 // app.use("/api", require("./routes/chatRoutes"));
 

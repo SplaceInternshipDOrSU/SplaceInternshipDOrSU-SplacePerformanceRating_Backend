@@ -402,6 +402,8 @@ user_login = async (req, res) => {
       .populate('role', 'name')
       .populate('category', 'name');
 
+      console.log(user)
+      console.log("user")
     if (user) {
       const match = await bcrypt.compare(password, user.password);
 
