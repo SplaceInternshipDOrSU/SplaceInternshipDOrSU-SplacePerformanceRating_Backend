@@ -242,9 +242,6 @@ delete_role = async (req, res) => {
     });
 };
 
-
-  
-
 // CATEGORIES CONTROLLERS
 categories_get = async (req, res) => {
   console.log("categories_get");

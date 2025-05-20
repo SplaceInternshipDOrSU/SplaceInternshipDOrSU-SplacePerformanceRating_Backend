@@ -1,12 +1,15 @@
 
 const { responseReturn } = require("../../utils/response");
 const ratingModel= require("../../models/ratingModel");
+const User = require("../../models/userModel");
+const Team = require("../../models/teamModel");
 const cloudinary = require("cloudinary").v2;
 exports.cloudinary = cloudinary;
 const formidable = require("formidable");
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
+const mongoose = require('mongoose');
 
 require("dotenv").config();
 
@@ -36,6 +39,7 @@ rating_add = async (req, res) => {
   try {
     const { evaluatedUser, evaluator, roleOfEvaluator, category, ratings, quarter, year } = req.body;
     console.log(req.body);
+    console.log("req.body sa RAting");
 
     // Validate required fields
     if (!evaluatedUser || !evaluator || !roleOfEvaluator || !quarter || !year || !category || !ratings || !Array.isArray(ratings)) {
@@ -74,6 +78,7 @@ rating_add = async (req, res) => {
     return responseReturn(res, 200, {
       message: 'Rating saved successfully.',
       totalScore: newRating.totalScore,
+      newRating
     });
 
   } catch (error) {
@@ -112,6 +117,88 @@ getSelfRating = async (req, res) => {
     return res.status(500).json({ message: "Internal server error." });
   }
 };
+getPeerRating = async (req, res) => {
+  try {
+    const { evaluatorID ,userId, quarter, year } = req.query;
+    console.log(req.query)
+    console.log("req.query")
+    
+
+    if (!userId || !quarter || !year) {
+      return res.status(400).json({ message: "Missing userId, quarter, or year." });
+    }
+
+    const rating = await ratingModel.findOne({
+      evaluatedUser: userId,
+      evaluator: evaluatorID,
+      roleOfEvaluator: 'peer',
+      quarter,
+      year
+    });
+
+    if (!rating) {
+      return res.status(404).json({ message: "Self-rating not found for this quarter and year." });
+    }
+
+    console.log(rating)
+    // return res.status(200).json(rating);
+      return responseReturn(res, 200, {
+      rating,
+    });
+  } catch (error) {
+    console.error("Error fetching self-rating:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+// const {userId} = req.body;
+peersGet = async (req, res) => {
+ try {
+    const { userId } = req.query;
+   
+
+    // Find the team where the user is in the rankandfile array
+      const team = await Team.findOne({ rankandfile: userId })
+        .populate({
+          path: 'rankandfile',
+          populate: [
+            { path: 'category', select: 'name' },
+            { path: 'role', select: 'name' }
+          ]
+        });
+
+
+    if (!team) {
+      return res.status(404).json({ message: 'User not found in any team as rankandfile.' });
+    }
+
+    // Filter out the current user from the list of rankandfile members
+    const peers = team.rankandfile.filter(user => user._id.toString() !== userId);
+
+      return responseReturn(res, 200, {
+      peers
+    });
+  } catch (error) {
+    console.error('Error fetching peers:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+peerGet = async (req, res) => {
+        const { userId } = req.query
+
+        try {
+          const peer = await User.findById(userId).populate('role', 'name')
+        .populate('category', 'name slug')
+
+        console.log(peer)
+
+            responseReturn(res, 200, { peer })
+        } catch (error) {
+          console.log(error)
+            responseReturn(res, 500, { error: error.message })
+        }
+}
+
 
 
 

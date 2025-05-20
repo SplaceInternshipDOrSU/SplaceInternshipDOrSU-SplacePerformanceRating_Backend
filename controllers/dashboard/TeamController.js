@@ -226,7 +226,6 @@ class TeamController {
             return responseReturn(res, 500, { error: "Internal server error" });
         }
     };
-
     create_team = async (req, res) => {
         console.log("TEAM CREATION INITIALIZED");
         try {
@@ -307,8 +306,8 @@ class TeamController {
           console.error("Error creating team:", error);
           return responseReturn(res, 500, { error: error.message || "Server error" });
         }
-      };
-      teams_get = async (req, res) => {
+    };
+    teams_get = async (req, res) => {
         console.log("teams_get");
       
         const { page, searchValue, parPage } = req.query;
@@ -416,158 +415,8 @@ class TeamController {
           console.log(error.stack || error.message);
           return responseReturn(res, 500, { error: "Internal server error" });
         }
-      };
-      
-      
-      
-      
-
-  
-
-// teams_get = async (req, res) => {
-//   console.log("teams_get");
-
-//   const { page, searchValue, perPage } = req.query;
-//   console.log("req.query", req.query);
-
-//   try {
-//     // Validate and default pagination params
-//     const pageNum = Math.max(1, parseInt(page) || 1);
-//     const perPageNum = Math.max(1, parseInt(perPage) || 10);
-//     const skip = perPageNum * (pageNum - 1);
-
-//     // Build search query
-//     let teamsQuery = {};
-//     if (searchValue) {
-//       teamsQuery = {
-//         name: { $regex: searchValue, $options: "i" }, // Case-insensitive name search
-//       };
-//     }
-
-//     // Fetch teams with populated user references
-//     const teams = await teamModel
-//       .find(teamsQuery)
-//       .skip(skip)
-//       .limit(perPageNum)
-//       .sort({ createdAt: -1 }) // latest first
-//       .populate('ceo', 'name email') // populate only name and email fields
-//       .populate('coo', 'name email')
-//       .populate('supervisor', 'name email')
-//       .populate('manager', 'name email')
-//       .populate('rankandfile', 'name email');
-
-//     // Add numbering
-//     const numberedTeams = teams.map((team, index) => ({
-//       ...team.toObject(),
-//       no: skip + index + 1
-//     }));
-
-//     // Count total matching teams
-//     const totalTeams = await teamModel.countDocuments(teamsQuery);
-//     const totalPages = Math.ceil(totalTeams / perPageNum);
-
-//     console.log("Teams fetched successfully");
-
-//     return responseReturn(res, 200, {
-//       totalTeams,
-//       totalPages,
-//       currentPage: pageNum,
-//       perPage: perPageNum,
-//       teams: numberedTeams,
-//     });
-
-//   } catch (error) {
-//     console.log(error.message);
-//     return responseReturn(res, 500, { error: "Internal server error" });
-//   }
-// };
-
-      
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // create_team = async (req, res) => {
-    // try {
-    //   const { name, ceoId, cooId, supervisorId, managerId, rankandfileIds } = req.body;
-
-    //   console.log(req.body)
-    //   console.log("CREATE TEAM INITIALIZED")
-  
-    //   // Validate required fields
-    //   if (!name || !ceoId || !cooId) {
-    //     return responseReturn(res, 400, { error: "Name, CEO, and COO are required" });
-    //   }
-  
-    //   // Find and validate CEO
-    //   const ceoUser = await userModel.findById(ceoId);
-    //   if (!ceoUser || ceoUser.categoryName.toLowerCase() !== 'ceo') {
-    //     return responseReturn(res, 400, { error: "Invalid CEO user" });
-    //   }
-  
-    //   // Find and validate COO
-    //   const cooUser = await userModel.findById(cooId);
-    //   if (!cooUser || cooUser.categoryName.toLowerCase() !== 'coo') {
-    //     return responseReturn(res, 400, { error: "Invalid COO user" });
-    //   }
-  
-    //   // Validate optional users
-    //   let supervisorUser = null;
-    //   if (supervisorId) {
-    //     supervisorUser = await userModel.findById(supervisorId);
-    //     if (!supervisorUser || supervisorUser.categoryName.toLowerCase() !== 'supervisor') {
-    //       return responseReturn(res, 400, { error: "Invalid Supervisor user" });
-    //     }
-    //   }
-  
-    //   let managerUser = null;
-    //   if (managerId) {
-    //     managerUser = await userModel.findById(managerId);
-    //     if (!managerUser || managerUser.categoryName.toLowerCase() !== 'manager') {
-    //       return responseReturn(res, 400, { error: "Invalid Manager user" });
-    //     }
-    //   }
-  
-    //   let rankandfileUsers = [];
-    //   if (rankandfileIds && Array.isArray(rankandfileIds)) {
-    //     rankandfileUsers = await userModel.find({ 
-    //       _id: { $in: rankandfileIds },
-    //       categoryName: { $regex: new RegExp('^rankandfile$', 'i') }
-    //     });
-  
-    //     if (rankandfileUsers.length !== rankandfileIds.length) {
-    //       return responseReturn(res, 400, { error: "Some Rank-and-File users are invalid" });
-    //     }
-    //   }
-  
-    //   // Create the team
-    //   const team = await teamModel.create({
-    //     name,
-    //     ceo: ceoUser._id,
-    //     coo: cooUser._id,
-    //     supervisor: supervisorUser ? supervisorUser._id : null,
-    //     manager: managerUser ? managerUser._id : null,
-    //     rankandfile: rankandfileUsers.map(user => user._id),
-    //   });
-  
-    //   return responseReturn(res, 201, { message: "Team created successfully", team });
-  
-    // } catch (error) {
-    //   console.error("Error creating team:", error);
-    //   return responseReturn(res, 500, { error: "Server error" });
-    // }
-    // };
+    };
+   
     get_active_ceo_coo = async (req, res) => {
         console.log("get_active_ceo_coo");
     
@@ -615,13 +464,7 @@ class TeamController {
             return responseReturn(res, 500, { error: "Internal server error" });
         }
     };
-    
-    
     // SPLACE BS
-
-
-
-
     get_user_requests = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const parPage = parseInt(req.query.parPage) || 10;
@@ -656,8 +499,6 @@ class TeamController {
             responseReturn(res, 500, { error: error.message });
         }
     };
-    
-
     get_user = async (req, res) => {
         const { userId } = req.params
 
@@ -668,7 +509,6 @@ class TeamController {
             responseReturn(res, 500, { error: error.message })
         }
     }
-
     user_status_update = async (req, res) => {
         const { userId, status } = req.body;
     
@@ -697,11 +537,7 @@ class TeamController {
             responseReturn(res, 500, { error: error.message });
         }
     };
-
-
-
-
-            get_active_users = async (req, res) => {
+    get_active_users = async (req, res) => {
             let { page, searchValue, perPage, role, category } = req.query;
 
             page = parseInt(page) || 1;
@@ -752,176 +588,8 @@ class TeamController {
                 console.error("Error fetching active Users:", error.stack);
                 responseReturn(res, 500, { message: "Server Error" });
             }
-            };
+    };
 
-      
-
-
-
-
-
-
-    // get_trader_request = async (req, res) => {
-    //     console.log("asdasdasd")
-    //     const { page, searchValue, parPage } = req.query
-    //     const skipPage = parseInt(parPage) * (parseInt(page) - 1)
-    //     try {
-    //         if (searchValue) {
-    //             //const seller
-    //         } else {
-    //             const traders = await traderModel.find({ status: 'pending' }).skip(skipPage).limit(parPage).sort({ createdAt: -1 })
-    //             const totalTraders = await traderModel.find({ status: 'pending' }).countDocuments()
-    //             responseReturn(res, 200, { totalTraders, traders })
-    //         }
-    //     } catch (error) {
-    //         console.log()
-    //         responseReturn(res, 500, { error: error.message })
-    //     }
-    // }
-    // get_seller = async (req, res) => {
-    //     const { sellerId } = req.params
-
-    //     try {
-    //         const seller = await sellerModel.findById(sellerId)
-    //         responseReturn(res, 200, { seller })
-    //     } catch (error) {
-    //         responseReturn(res, 500, { error: error.message })
-    //     }
-    // }
-    // get_trader = async (req, res) => {
-    //     const { traderId } = req.params
-
-    //     try {
-    //         const trader = await traderModel.findById(traderId)
-    //         responseReturn(res, 200, { trader })
-    //     } catch (error) {
-    //         responseReturn(res, 500, { error: error.message })
-    //     }
-    // }
-    // seller_status_update = async (req, res) => {
-    //     const { sellerId, status } = req.body;
-    
-    //     try {
-    //         // Check if the seller exists
-    //         const seller = await sellerModel.findById(sellerId);
-    //         if (!seller) {
-    //             return responseReturn(res, 404, { message: "Seller not found" });
-    //         }
-    
-    //         // Update the seller's status
-    //         seller.status = status;
-    //         await seller.save();
-    
-    //         // Update listings based on the seller's new status
-    //         if (status !== "active") {
-    //             await Listing.updateMany({ sellerId }, { isAvailable: false });
-    //         } else {
-    //             await Listing.updateMany({ sellerId }, { isAvailable: true });
-    //         }
-    
-    //         // Return the updated seller
-    //         const updatedSeller = await sellerModel.findById(sellerId);
-    //         responseReturn(res, 200, { seller: updatedSeller, message: "Seller status updated successfully" });
-    //     } catch (error) {
-    //         responseReturn(res, 500, { error: error.message });
-    //     }
-    // };
-    // trader_status_update = async (req, res) => {
-    //     const { traderId, status } = req.body;
-    
-    //     try {
-    //         // Check if the seller exists
-    //         const trader = await traderModel.findById(traderId);
-    //         if (!trader) {
-    //             return responseReturn(res, 404, { message: "Trader not found" });
-    //         }
-    
-    //         // Update the seller's status
-    //         trader.status = status;
-    //         await trader.save();
-    
-    //         // // Update listings based on the seller's new status
-    //         // if (status !== "active") {
-    //         //     await Listing.updateMany({ sellerId }, { isAvailable: false });
-    //         // } else {
-    //         //     await Listing.updateMany({ sellerId }, { isAvailable: true });
-    //         // }
-    
-    //         // Return the updated seller
-    //         const updatedTrader = await traderModel.findById(traderId);
-    //         responseReturn(res, 200, { trader: updatedTrader, message: "Trader status updated successfully" });
-    //     } catch (error) {
-    //         responseReturn(res, 500, { error: error.message });
-    //     }
-    // };
-    // get_active_sellers = async (req, res) => {
-    //     let { page, searchValue, parPage } = req.query;
-    
-    //     // Validate query params
-    //     page = parseInt(page) || 1;
-    //     parPage = parseInt(parPage) || 10;
-    
-    //     const skipPage = parPage * (page - 1);
-    
-    //     try {
-    //         // Build dynamic query
-    //         const query = { status: 'active' };
-    
-    //         if (searchValue) {
-    //             query.$or = [
-    //                 { firstName: { $regex: searchValue, $options: "i" } },
-    //                 { middleName: { $regex: searchValue, $options: "i" } },
-    //                 { lastName: { $regex: searchValue, $options: "i" } },
-    //                 { associationName: { $regex: searchValue, $options: "i" } },
-    //             ];
-    //         }
-    
-    //         // Fetch data with pagination and sorting
-    //         const sellers = await sellerModel.find(query)
-    //             .skip(skipPage)
-    //             .limit(parPage)
-    //             .sort({ createdAt: -1 });
-    
-    //         // Count total sellers matching the query
-    //         const totalSeller = await sellerModel.countDocuments(query);
-    
-    //         // Return response
-    //         responseReturn(res, 200, { totalSeller, sellers });
-    //     } catch (error) {
-    //         console.error("Error fetching active sellers:", error.message);
-    //         responseReturn(res, 500, { message: "Server Error" });
-    //     }
-    // };
-    // get_deactive_sellers = async (req, res) => {
-    //     let { page, searchValue, parPage } = req.query
-    //     page = parseInt(page)
-    //     parPage = parseInt(parPage)
-
-    //     const skipPage = parPage * (page - 1)
-
-    //     try {
-    //         if (searchValue) {
-    //             const sellers = await sellerModel.find({
-    //                 $text: { $search: searchValue },
-    //                 status: 'deactive'
-    //             }).skip(skipPage).limit(parPage).sort({ createdAt: -1 })
-
-    //             const totalSeller = await sellerModel.find({
-    //                 $text: { $search: searchValue },
-    //                 status: 'deactive'
-    //             }).countDocuments()
-
-    //             responseReturn(res, 200, { totalSeller, sellers })
-    //         } else {
-    //             const sellers = await sellerModel.find({ status: 'deactive' }).skip(skipPage).limit(parPage).sort({ createdAt: -1 })
-    //             const totalSeller = await sellerModel.find({ status: 'deactive' }).countDocuments()
-    //             responseReturn(res, 200, { totalSeller, sellers })
-    //         }
-
-    //     } catch (error) {
-    //         console.log('active seller get ' + error.message)
-    //     }
-    // }
 }
 
 module.exports = new TeamController()

@@ -66,9 +66,7 @@ class authControllers {
     return Array.isArray(field) ? field[0] : field;
   }
   
-
-
-  admin_login = async (req, res) => {
+admin_login = async (req, res) => {
     const { email, password } = req.body;
     console.log("admin_login")
     console.log(req.body)
@@ -102,9 +100,8 @@ class authControllers {
       console.log(error)
       responseReturn(res, 500, { error: error.message });
     }
-  };
-  
-  add_new_admin = async (req, res) => {
+};
+add_new_admin = async (req, res) => {
     const { name, email, password } = req.body;
     console.log("add_new_admin");
     console.log(req.body);
@@ -150,11 +147,8 @@ class authControllers {
     } catch (error) {
       responseReturn(res, 500, { error: error.message });
     }
-  };
-  
-
-
-  change_password = async (req, res) => {
+};
+change_password = async (req, res) => {
     console.log("CHANGE")
     console.log(req.body)
     const { currentPassword, newPassword, id } = req.body;
@@ -194,9 +188,8 @@ class authControllers {
         error: "An error occurred while changing the password",
       });
     }
-  };
-  
-  getUser = async (req, res) => {
+};
+getUser = async (req, res) => {
     const { id, category } = req;
     try {
       if (category === "admin") {
@@ -205,7 +198,7 @@ class authControllers {
         console.log(user);
       } else {
         const user1 = await userModel.findById(id) .populate('role', 'name')
-        .populate('category', 'name');;
+        .populate('category', 'name');
         console.log(user1)
   
         // Normalize category if it exists
@@ -223,18 +216,8 @@ class authControllers {
         error: "Internal Server Error",
       });
     }
-  };
-  
-
-
-  
-
- 
- 
-
-
-
-  logout = async (req, res) => {
+};
+logout = async (req, res) => {
     console.log("asdadasd")
     try {
       res.cookie('accessToken', null,{
@@ -253,10 +236,8 @@ class authControllers {
       });
       
     }
-  }
-
+}
 // USER CONTROLLERS
-
 user_registration = async (req, res) => {
   console.log("USER REGISTRATION");
   try {
@@ -391,9 +372,6 @@ user_registration = async (req, res) => {
     });
   }
 };
-
-
-
 user_login = async (req, res) => {
   const { email, password } = req.body;
   try {

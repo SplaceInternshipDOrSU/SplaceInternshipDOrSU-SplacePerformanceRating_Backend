@@ -7,6 +7,12 @@ const RatingController = require("../../../controllers/dashboard/RatingControlle
 
 router.post('/rate-add',authMiddleware,RatingController.rating_add)
 router.get("/rate-get", RatingController.getSelfRating);
+router.get("/peer-rating-get", RatingController.getPeerRating);
+
+
+
+router.get("/peers-get", RatingController.peersGet);
+router.get("/get-peer", RatingController.peerGet);
 
 // router.get("/teams-get", TeamController.teams_get);
 
